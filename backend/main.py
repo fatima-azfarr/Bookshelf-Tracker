@@ -93,6 +93,10 @@ def book_read(id: int) -> ReadBook:
         )
     return books[id]
 
+@app.get("/books", response_model=list[ReadBook])
+def list_books() -> list[ReadBook]:
+    return list(books.values())
+
 
 @app.post("/book", response_model=ReadBook)
 def submit_book(body: AddBook) -> ReadBook:

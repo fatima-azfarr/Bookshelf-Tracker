@@ -129,6 +129,9 @@
   </div>
 
   <script>
+    // ── CONFIG ──────────────────────────────────────────────────────────────────
+    const API_BASE = 'http://127.0.0.1:8000'
+
     // ── DATA ────────────────────────────────────────────────────────────────────
 
     const GENRE_META = {
@@ -139,18 +142,34 @@
       fantasy:    { label: 'Fantasy',     emoji: '✿', cls: 'pill-emerald' },
     }
 
-    let books = [
-      { id: 1, title: 'The House in the Cerulean Sea', author: 'TJ Klune',           genre: 'fantasy',    pages: 394, status: 'finished', rating: 5 },
-      { id: 2, title: 'Piranesi',                      author: 'Susanna Clarke',      genre: 'fiction',    pages: 272, status: 'finished', rating: 5 },
-      { id: 3, title: 'Project Hail Mary',             author: 'Andy Weir',           genre: 'sci_fi',     pages: 476, status: 'reading',  rating: null },
-      { id: 4, title: 'Braiding Sweetgrass',           author: 'Robin W. Kimmerer',   genre: 'nonfiction', pages: 390, status: 'reading',  rating: null },
-      { id: 5, title: 'The Long Way to a Small, Angry Planet', author: 'Becky Chambers', genre: 'sci_fi', pages: 404, status: 'to_read',  rating: null },
-      { id: 6, title: 'Educated',                      author: 'Tara Westover',       genre: 'biography',  pages: 334, status: 'to_read',  rating: null },
-      { id: 7, title: 'Jonathan Strange & Mr Norrell', author: 'Susanna Clarke',      genre: 'fantasy',    pages: 782, status: 'to_read',  rating: null },
-    ]
-    let nextId = 8
+    let books = []
     let pendingRateId = null
     let pickedRating = 0
+
+    // ── API ─────────────────────────────────────────────────────────────────────
+
+    async function apiRequest(path, options = {}) {
+      const res = await fetch(`${API_BASE}${path}`, {
+        headers: { 'Content-Type': 'application/json' },
+        ...options,
+      })
+      if (!res.ok) {
+        const errBody = await res.json().catch(() => ({}))
+        console.error('API error:', res.status, errBody)
+        throw new Error(errBody.detail || `Request failed (${res.status})`)
+      }
+      if (res.status === 204) return null
+      return res.json()
+    }
+
+    async function loadBooks() {
+      try {
+        books = await apiRequest('/books')
+        render()
+      } catch (err) {
+        console.error('Failed to load books:', err)
+      }
+    }
 
     // ── HELPERS ─────────────────────────────────────────────────────────────────
 
@@ -237,17 +256,29 @@
 
     // ── CRUD ─────────────────────────────────────────────────────────────────────
 
-    function deleteBook(id) {
-      books = books.filter(b => b.id !== id)
-      render()
+    async function deleteBook(id) {
+      try {
+        await apiRequest(`/book/${id}`, { method: 'DELETE' })
+        await loadBooks()
+      } catch (err) {
+        console.error('Failed to delete book:', err)
+      }
     }
 
-    function advanceBook(id) {
+    async function advanceBook(id) {
       const book = books.find(b => b.id === id)
       if (!book) return
+
       if (book.status === 'to_read') {
-        book.status = 'reading'
-        render()
+        try {
+          await apiRequest(`/book/${id}`, {
+            method: 'PATCH',
+            body: JSON.stringify({ status: 'reading' }),
+          })
+          await loadBooks()
+        } catch (err) {
+          console.error('Failed to advance book:', err)
+        }
       } else if (book.status === 'reading') {
         pendingRateId = id
         pickedRating = 0
@@ -287,9 +318,9 @@
       if (e.target === this) this.classList.add('hidden')
     })
 
-    document.getElementById('book-form').addEventListener('submit', function(e) {
+    document.getElementById('book-form').addEventListener('submit', async function(e) {
       e.preventDefault()
-      const id    = document.getElementById('edit-id').value
+      const id     = document.getElementById('edit-id').value
       const title  = document.getElementById('input-title').value.trim()
       const author = document.getElementById('input-author').value.trim()
       const genre  = document.getElementById('input-genre').value
@@ -298,15 +329,31 @@
 
       if (!title || !author) return
 
-      if (id) {
-        const book = books.find(b => b.id === +id)
-        if (book) Object.assign(book, { title, author, genre, pages })
-      } else {
-        books.push({ id: nextId++, title, author, genre, pages, status: 'to_read', rating: null })
-      }
+      try {
+        if (id) {
+          // PUT expects the full book shape, so carry over the existing status/rating
+          const existing = books.find(b => b.id === +id)
+          await apiRequest(`/book/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify({
+              title, author, genre, pages,
+              status: existing.status,
+              rating: existing.rating,
+            }),
+          })
+        } else {
+          // POST only needs the create-time fields; backend assigns id + defaults status to to_read
+          await apiRequest('/book', {
+            method: 'POST',
+            body: JSON.stringify({ title, author, genre, pages }),
+          })
+        }
 
-      document.getElementById('form-modal').classList.add('hidden')
-      render()
+        document.getElementById('form-modal').classList.add('hidden')
+        await loadBooks()
+      } catch (err) {
+        console.error('Failed to save book:', err)
+      }
     })
 
     // ── RATING MODAL ──────────────────────────────────────────────────────────────
@@ -323,12 +370,18 @@
       s.addEventListener('click', () => { pickedRating = +s.dataset.val; updateStarPicker(pickedRating) })
     })
 
-    function finishRating(rating) {
-      const book = books.find(b => b.id === pendingRateId)
-      if (book) { book.status = 'finished'; book.rating = rating || null }
-      pendingRateId = null
-      document.getElementById('rating-modal').classList.add('hidden')
-      render()
+    async function finishRating(rating) {
+      try {
+        await apiRequest(`/book/${pendingRateId}`, {
+          method: 'PATCH',
+          body: JSON.stringify({ status: 'finished', rating: rating || null }),
+        })
+        pendingRateId = null
+        document.getElementById('rating-modal').classList.add('hidden')
+        await loadBooks()
+      } catch (err) {
+        console.error('Failed to save rating:', err)
+      }
     }
 
     document.getElementById('save-rating-btn').addEventListener('click', () => finishRating(pickedRating))
@@ -348,7 +401,7 @@
     })
 
     // ── INIT ──────────────────────────────────────────────────────────────────────
-    render()
+    loadBooks()
   </script>
 </body>
 </html>

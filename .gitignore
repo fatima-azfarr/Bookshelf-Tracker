@@ -1,0 +1,5 @@
+backend/venv/
+backend/__pycache__/
+backend/.mypy_cache/
+*.pyc
+.DS_Store

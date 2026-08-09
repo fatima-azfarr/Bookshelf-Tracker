@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>My Bookshelf</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,500;0,600;1,400&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <!-- HEADER -->
+  <header class="site-header">
+    <div class="header-left">
+      <span class="header-icon">📚</span>
+      <div>
+        <h1 class="site-title">My Bookshelf</h1>
+        <p class="site-subtitle" id="book-count">0 books on the shelf</p>
+      </div>
+    </div>
+    <button class="btn-primary" id="open-add-btn">+ Add book</button>
+  </header>
+
+  <!-- FILTER BAR -->
+  <div class="filter-bar">
+    <span class="filter-label">Filter:</span>
+    <select id="filter-genre" class="filter-select">
+      <option value="">All genres</option>
+      <option value="fiction">Fiction</option>
+      <option value="nonfiction">Non-fiction</option>
+      <option value="sci_fi">Sci-Fi</option>
+      <option value="biography">Biography</option>
+      <option value="fantasy">Fantasy</option>
+    </select>
+    <select id="filter-status" class="filter-select">
+      <option value="">All statuses</option>
+      <option value="to_read">To Read</option>
+      <option value="reading">Reading</option>
+      <option value="finished">Finished</option>
+    </select>
+    <button class="btn-clear hidden" id="clear-filters">Clear ×</button>
+  </div>
+
+  <!-- KANBAN BOARD -->
+  <main class="board">
+    <div class="column">
+      <div class="col-header">
+        <span class="col-dot dot-violet"></span>
+        <span class="col-name">To Read</span>
+        <span class="col-count" id="count-to_read">0</span>
+      </div>
+      <div class="cards-area" id="col-to_read" data-empty="Nothing queued up yet"></div>
+    </div>
+    <div class="column">
+      <div class="col-header">
+        <span class="col-dot dot-amber"></span>
+        <span class="col-name">Reading</span>
+        <span class="col-count" id="count-reading">0</span>
+      </div>
+      <div class="cards-area" id="col-reading" data-empty="Nothing in progress"></div>
+    </div>
+    <div class="column">
+      <div class="col-header">
+        <span class="col-dot dot-rose"></span>
+        <span class="col-name">Finished</span>
+        <span class="col-count" id="count-finished">0</span>
+      </div>
+      <div class="cards-area" id="col-finished" data-empty="No finished books yet"></div>
+    </div>
+  </main>
+
+  <!-- ADD / EDIT MODAL -->
+  <div class="modal-backdrop hidden" id="form-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 class="modal-title" id="form-title">Add a book</h2>
+        <button class="modal-close" id="close-form-btn">×</button>
+      </div>
+      <form id="book-form">
+        <input type="hidden" id="edit-id" />
+        <div class="form-group">
+          <label class="form-label" for="input-title">Title</label>
+          <input class="form-input" type="text" id="input-title" placeholder="Book title" required />
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="input-author">Author</label>
+          <input class="form-input" type="text" id="input-author" placeholder="Author name" required />
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="input-genre">Genre</label>
+            <select class="form-input" id="input-genre">
+              <option value="fiction">Fiction</option>
+              <option value="nonfiction">Non-fiction</option>
+              <option value="sci_fi">Sci-Fi</option>
+              <option value="biography">Biography</option>
+              <option value="fantasy">Fantasy</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="input-pages">Pages</label>
+            <input class="form-input" type="number" id="input-pages" min="1" placeholder="optional" />
+          </div>
+        </div>
+        <button class="btn-primary btn-full" type="submit" id="form-submit-btn">Add to shelf ✦</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- RATING MODAL -->
+  <div class="modal-backdrop hidden" id="rating-modal">
+    <div class="modal modal-sm">
+      <p class="rating-heading">Finished! How was it?</p>
+      <p class="rating-sub">Give it a star rating (optional)</p>
+      <div class="star-picker" id="star-picker">
+        <span class="star-pick" data-val="1">★</span>
+        <span class="star-pick" data-val="2">★</span>
+        <span class="star-pick" data-val="3">★</span>
+        <span class="star-pick" data-val="4">★</span>
+        <span class="star-pick" data-val="5">★</span>
+      </div>
+      <div class="rating-actions">
+        <button class="btn-muted" id="skip-rating-btn">Skip</button>
+        <button class="btn-primary" id="save-rating-btn">Save ★</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ── DATA ────────────────────────────────────────────────────────────────────
+
+    const GENRE_META = {
+      fiction:    { label: 'Fiction',     emoji: '✦', cls: 'pill-rose' },
+      nonfiction: { label: 'Non-fiction', emoji: '◈', cls: 'pill-amber' },
+      sci_fi:     { label: 'Sci-Fi',      emoji: '⬡', cls: 'pill-sky' },
+      biography:  { label: 'Biography',   emoji: '◎', cls: 'pill-violet' },
+      fantasy:    { label: 'Fantasy',     emoji: '✿', cls: 'pill-emerald' },
+    }
+
+    let books = [
+      { id: 1, title: 'The House in the Cerulean Sea', author: 'TJ Klune',           genre: 'fantasy',    pages: 394, status: 'finished', rating: 5 },
+      { id: 2, title: 'Piranesi',                      author: 'Susanna Clarke',      genre: 'fiction',    pages: 272, status: 'finished', rating: 5 },
+      { id: 3, title: 'Project Hail Mary',             author: 'Andy Weir',           genre: 'sci_fi',     pages: 476, status: 'reading',  rating: null },
+      { id: 4, title: 'Braiding Sweetgrass',           author: 'Robin W. Kimmerer',   genre: 'nonfiction', pages: 390, status: 'reading',  rating: null },
+      { id: 5, title: 'The Long Way to a Small, Angry Planet', author: 'Becky Chambers', genre: 'sci_fi', pages: 404, status: 'to_read',  rating: null },
+      { id: 6, title: 'Educated',                      author: 'Tara Westover',       genre: 'biography',  pages: 334, status: 'to_read',  rating: null },
+      { id: 7, title: 'Jonathan Strange & Mr Norrell', author: 'Susanna Clarke',      genre: 'fantasy',    pages: 782, status: 'to_read',  rating: null },
+    ]
+    let nextId = 8
+    let pendingRateId = null
+    let pickedRating = 0
+
+    // ── HELPERS ─────────────────────────────────────────────────────────────────
+
+    function stars(n, max = 5) {
+      let s = ''
+      for (let i = 1; i <= max; i++) s += `<span class="star ${i <= n ? 'star-on' : 'star-off'}">★</span>`
+      return s
+    }
+
+    function makeCard(book) {
+      const g = GENRE_META[book.genre]
+      const hasNext = book.status !== 'finished'
+      const nextLabel = book.status === 'to_read' ? 'Start reading →' : 'Mark finished →'
+      const nextCls   = book.status === 'to_read' ? 'advance-green' : 'advance-pink'
+
+      return `
+        <div class="card" data-id="${book.id}">
+          <div class="card-top">
+            <span class="pill ${g.cls}">${g.emoji} ${g.label}</span>
+            <div class="card-actions">
+              <button class="icon-btn edit-btn" data-id="${book.id}" title="Edit">✎</button>
+              <button class="icon-btn delete-btn" data-id="${book.id}" title="Delete">×</button>
+            </div>
+          </div>
+          <div class="card-body">
+            <p class="card-title">${escHtml(book.title)}</p>
+            <p class="card-author">${escHtml(book.author)}</p>
+          </div>
+          <div class="card-footer">
+            ${book.pages ? `<span class="card-pages">${book.pages} pp</span>` : '<span></span>'}
+            ${book.status === 'finished' && book.rating ? `<div class="card-stars">${stars(book.rating)}</div>` : ''}
+          </div>
+          ${hasNext ? `<button class="advance-btn ${nextCls}" data-id="${book.id}">${nextLabel}</button>` : ''}
+        </div>
+      `
+    }
+
+    function escHtml(str) {
+      return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')
+    }
+
+    // ── RENDER ───────────────────────────────────────────────────────────────────
+
+    function render() {
+      const gf = document.getElementById('filter-genre').value
+      const sf = document.getElementById('filter-status').value
+
+      const filtered = books.filter(b =>
+        (!gf || b.genre === gf) && (!sf || b.status === sf)
+      )
+
+      const cols = { to_read: [], reading: [], finished: [] }
+      filtered.forEach(b => cols[b.status].push(b))
+
+      for (const status of ['to_read', 'reading', 'finished']) {
+        const el = document.getElementById('col-' + status)
+        const countEl = document.getElementById('count-' + status)
+        countEl.textContent = cols[status].length
+
+        if (cols[status].length === 0) {
+          el.innerHTML = `<p class="empty-msg">${el.dataset.empty}</p>`
+        } else {
+          el.innerHTML = cols[status].map(makeCard).join('')
+        }
+      }
+
+      document.getElementById('book-count').textContent =
+        `${books.length} book${books.length !== 1 ? 's' : ''} on the shelf`
+
+      const hasFilt = gf || sf
+      document.getElementById('clear-filters').classList.toggle('hidden', !hasFilt)
+
+      // attach card button listeners
+      document.querySelectorAll('.delete-btn').forEach(btn => {
+        btn.addEventListener('click', () => deleteBook(+btn.dataset.id))
+      })
+      document.querySelectorAll('.edit-btn').forEach(btn => {
+        btn.addEventListener('click', () => openEdit(+btn.dataset.id))
+      })
+      document.querySelectorAll('.advance-btn').forEach(btn => {
+        btn.addEventListener('click', () => advanceBook(+btn.dataset.id))
+      })
+    }
+
+    // ── CRUD ─────────────────────────────────────────────────────────────────────
+
+    function deleteBook(id) {
+      books = books.filter(b => b.id !== id)
+      render()
+    }
+
+    function advanceBook(id) {
+      const book = books.find(b => b.id === id)
+      if (!book) return
+      if (book.status === 'to_read') {
+        book.status = 'reading'
+        render()
+      } else if (book.status === 'reading') {
+        pendingRateId = id
+        pickedRating = 0
+        updateStarPicker(0)
+        document.getElementById('rating-modal').classList.remove('hidden')
+      }
+    }
+
+    function openEdit(id) {
+      const book = books.find(b => b.id === id)
+      if (!book) return
+      document.getElementById('form-title').textContent = 'Edit book'
+      document.getElementById('form-submit-btn').textContent = 'Save changes'
+      document.getElementById('edit-id').value = id
+      document.getElementById('input-title').value  = book.title
+      document.getElementById('input-author').value = book.author
+      document.getElementById('input-genre').value  = book.genre
+      document.getElementById('input-pages').value  = book.pages || ''
+      document.getElementById('form-modal').classList.remove('hidden')
+    }
+
+    // ── FORM MODAL ────────────────────────────────────────────────────────────────
+
+    document.getElementById('open-add-btn').addEventListener('click', () => {
+      document.getElementById('form-title').textContent = 'Add a book'
+      document.getElementById('form-submit-btn').textContent = 'Add to shelf ✦'
+      document.getElementById('edit-id').value = ''
+      document.getElementById('book-form').reset()
+      document.getElementById('form-modal').classList.remove('hidden')
+    })
+
+    document.getElementById('close-form-btn').addEventListener('click', () => {
+      document.getElementById('form-modal').classList.add('hidden')
+    })
+
+    document.getElementById('form-modal').addEventListener('click', function(e) {
+      if (e.target === this) this.classList.add('hidden')
+    })
+
+    document.getElementById('book-form').addEventListener('submit', function(e) {
+      e.preventDefault()
+      const id    = document.getElementById('edit-id').value
+      const title  = document.getElementById('input-title').value.trim()
+      const author = document.getElementById('input-author').value.trim()
+      const genre  = document.getElementById('input-genre').value
+      const pagesRaw = document.getElementById('input-pages').value
+      const pages  = pagesRaw ? parseInt(pagesRaw) : null
+
+      if (!title || !author) return
+
+      if (id) {
+        const book = books.find(b => b.id === +id)
+        if (book) Object.assign(book, { title, author, genre, pages })
+      } else {
+        books.push({ id: nextId++, title, author, genre, pages, status: 'to_read', rating: null })
+      }
+
+      document.getElementById('form-modal').classList.add('hidden')
+      render()
+    })
+
+    // ── RATING MODAL ──────────────────────────────────────────────────────────────
+
+    function updateStarPicker(val) {
+      document.querySelectorAll('.star-pick').forEach(s => {
+        s.classList.toggle('star-pick-on', +s.dataset.val <= val)
+      })
+    }
+
+    document.querySelectorAll('.star-pick').forEach(s => {
+      s.addEventListener('mouseenter', () => updateStarPicker(+s.dataset.val))
+      s.addEventListener('mouseleave', () => updateStarPicker(pickedRating))
+      s.addEventListener('click', () => { pickedRating = +s.dataset.val; updateStarPicker(pickedRating) })
+    })
+
+    function finishRating(rating) {
+      const book = books.find(b => b.id === pendingRateId)
+      if (book) { book.status = 'finished'; book.rating = rating || null }
+      pendingRateId = null
+      document.getElementById('rating-modal').classList.add('hidden')
+      render()
+    }
+
+    document.getElementById('save-rating-btn').addEventListener('click', () => finishRating(pickedRating))
+    document.getElementById('skip-rating-btn').addEventListener('click', () => finishRating(0))
+    document.getElementById('rating-modal').addEventListener('click', function(e) {
+      if (e.target === this) finishRating(0)
+    })
+
+    // ── FILTERS ───────────────────────────────────────────────────────────────────
+
+    document.getElementById('filter-genre').addEventListener('change', render)
+    document.getElementById('filter-status').addEventListener('change', render)
+    document.getElementById('clear-filters').addEventListener('click', () => {
+      document.getElementById('filter-genre').value = ''
+      document.getElementById('filter-status').value = ''
+      render()
+    })
+
+    // ── INIT ──────────────────────────────────────────────────────────────────────
+    render()
+  </script>
+</body>
+</html>

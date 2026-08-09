@@ -15,7 +15,7 @@ class BaseBook(BaseModel):
     author : str
     pages : int | None = None
     genre : Genre
-    ratings : int | None = Field(default = None,ge=1,le=5)
+    rating : int | None = Field(default = None,ge=1,le=5)
 
 
 class Status(str,Enum):

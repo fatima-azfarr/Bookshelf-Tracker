@@ -1,9 +1,19 @@
 from fastapi import FastAPI, HTTPException, status
+from fastapi.middleware.cors import CORSMiddleware
 from scalar_fastapi import get_scalar_api_reference
 
 from .schema import AddBook, EditBook, Genre, ReadBook, Status, StatusUpdate
 
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5500", "http://127.0.0.1:5500"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
 
 books: dict[int, ReadBook] = {
     1: ReadBook(
@@ -13,7 +23,7 @@ books: dict[int, ReadBook] = {
         pages=496,
         genre=Genre.sci_fi,
         status=Status.finished,
-        ratings=5,
+        rating=5,
     ),
     2: ReadBook(
         id=2,
@@ -22,7 +32,7 @@ books: dict[int, ReadBook] = {
         pages=334,
         genre=Genre.biography,
         status=Status.finished,
-        ratings=4,
+        rating=4,
     ),
     3: ReadBook(
         id=3,
@@ -31,7 +41,7 @@ books: dict[int, ReadBook] = {
         pages=310,
         genre=Genre.fantasy,
         status=Status.reading,
-        ratings=None,
+        rating=None,
     ),
     4: ReadBook(
         id=4,
@@ -40,7 +50,7 @@ books: dict[int, ReadBook] = {
         pages=443,
         genre=Genre.non_fiction,
         status=Status.reading,
-        ratings=None,
+        rating=None,
     ),
     5: ReadBook(
         id=5,
@@ -49,7 +59,7 @@ books: dict[int, ReadBook] = {
         pages=412,
         genre=Genre.sci_fi,
         status=Status.to_read,
-        ratings=None,
+        rating=None,
     ),
     6: ReadBook(
         id=6,
@@ -58,7 +68,7 @@ books: dict[int, ReadBook] = {
         pages=273,
         genre=Genre.fiction,
         status=Status.to_read,
-        ratings=None,
+        rating=None,
     ),
     7: ReadBook(
         id=7,
@@ -67,7 +77,7 @@ books: dict[int, ReadBook] = {
         pages=656,
         genre=Genre.biography,
         status=Status.to_read,
-        ratings=None,
+        rating=None,
     ),
 }
 
@@ -98,7 +108,7 @@ def submit_book(body: AddBook) -> ReadBook:
         pages=body.pages,
         genre=body.genre,
         status=Status.to_read,
-        ratings=None,
+        rating=None,
     )
     books[new_id] = new_book
     return new_book

@@ -8,11 +8,14 @@ app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5500", "http://127.0.0.1:5500"],
+    allow_origins=[
+        "http://127.0.0.1:5500",
+        "http://localhost:5500",
+        "http://[::1]:5500",
+    ],
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
 
 
 books: dict[int, ReadBook] = {
@@ -82,29 +85,24 @@ books: dict[int, ReadBook] = {
 }
 
 
-@app.get("/book/{id}", response_model=ReadBook)
-def book_read(id: int) -> ReadBook:
-
-    # check the id
-    if id not in books:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Invalid request,the given id doesn't exits!",
-        )
-    return books[id]
-
 @app.get("/books", response_model=list[ReadBook])
 def list_books() -> list[ReadBook]:
     return list(books.values())
 
 
+@app.get("/book/{id}", response_model=ReadBook)
+def book_read(id: int) -> ReadBook:
+    if id not in books:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Invalid request, the given id doesn't exist!",
+        )
+    return books[id]
+
+
 @app.post("/book", response_model=ReadBook)
 def submit_book(body: AddBook) -> ReadBook:
-
-    # create and assign the books a new id
     new_id = max(books.keys()) + 1
-
-    # add content to the new id
     new_book = ReadBook(
         id=new_id,
         title=body.title,
@@ -120,25 +118,25 @@ def submit_book(body: AddBook) -> ReadBook:
 
 @app.patch("/book/{id}", response_model=ReadBook)
 def patch_book(id: int, body: StatusUpdate) -> ReadBook:
-    # check the id
     if id not in books:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Invalid request,the given id doesn't exits!",
+            detail="Invalid request, the given id doesn't exist!",
         )
     book = books[id]
     book.status = body.status
+    if body.rating is not None:
+        book.rating = body.rating
     books[id] = book
     return book
 
 
 @app.put("/book/{id}", response_model=ReadBook)
 def update_book(id: int, body: EditBook) -> ReadBook:
-    # check the id
     if id not in books:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Invalid request,the given id doesn't exits!",
+            detail="Invalid request, the given id doesn't exist!",
         )
     books[id] = ReadBook(id=id, **body.model_dump())
     return books[id]
@@ -154,7 +152,7 @@ def delete_book(id: int) -> dict[str, str]:
     books.pop(id)
     return {"detail": f"The book #{id} is deleted"}
 
-#for scalar documentation
+
 @app.get("/scalar", include_in_schema=False)
 def scalar_documentation():
-    return get_scalar_api_reference(openapi_url=app.openapi_url, title="scalar" )
+    return get_scalar_api_reference(openapi_url=app.openapi_url, title="scalar API")

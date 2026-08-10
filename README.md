@@ -2,13 +2,10 @@
 
 A small full-stack practice project built to consolidate FastAPI + Pydantic
 concepts (CRUD, path/query params, enums, `Field()` constraints, response
-models) before starting SkillSync's real backend. Tracks books across three
+models). Tracks books across three
 states — To Read, Reading, Finished — with genre/status filtering and a
 star-rating flow when you mark something finished.
 
-Built as a companion to the "Ultimate Guide to FastAPI and Backend
-Development" course, applying each concept to a second, independent project
-rather than only the course's own examples.
 
 ---
 

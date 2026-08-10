@@ -14,7 +14,7 @@
   <!-- HEADER -->
   <header class="site-header">
     <div class="header-left">
-      <span class="header-icon">📚</span>
+      <span class="header-icon"></span>
       <div>
         <h1 class="site-title">My Bookshelf</h1>
         <p class="site-subtitle" id="book-count">0 books on the shelf</p>
@@ -27,7 +27,7 @@
   <div class="filter-bar">
     <span class="filter-label">Filter:</span>
     <select id="filter-genre" class="filter-select">
-      <option value="">All genres</option>
+      <option value="">Genres</option>
       <option value="fiction">Fiction</option>
       <option value="nonfiction">Non-fiction</option>
       <option value="sci_fi">Sci-Fi</option>
@@ -35,7 +35,7 @@
       <option value="fantasy">Fantasy</option>
     </select>
     <select id="filter-status" class="filter-select">
-      <option value="">All statuses</option>
+      <option value="">Status</option>
       <option value="to_read">To Read</option>
       <option value="reading">Reading</option>
       <option value="finished">Finished</option>
@@ -135,11 +135,11 @@
     // ── DATA ────────────────────────────────────────────────────────────────────
 
     const GENRE_META = {
-      fiction:    { label: 'Fiction',     emoji: '✦', cls: 'pill-rose' },
-      nonfiction: { label: 'Non-fiction', emoji: '◈', cls: 'pill-amber' },
-      sci_fi:     { label: 'Sci-Fi',      emoji: '⬡', cls: 'pill-sky' },
-      biography:  { label: 'Biography',   emoji: '◎', cls: 'pill-violet' },
-      fantasy:    { label: 'Fantasy',     emoji: '✿', cls: 'pill-emerald' },
+      fiction:     { label: 'Fiction',     emoji: '✦', cls: 'pill-rose' },
+      nonfiction:  { label: 'Non-fiction', emoji: '◈', cls: 'pill-amber' },
+      sci_fi:      { label: 'Sci-Fi',      emoji: '⬡', cls: 'pill-sky' },
+      biography:   { label: 'Biography',   emoji: '◎', cls: 'pill-violet' },
+      fantasy:     { label: 'Fantasy',     emoji: '✿', cls: 'pill-emerald' },
     }
 
     let books = []
@@ -242,7 +242,6 @@
       const hasFilt = gf || sf
       document.getElementById('clear-filters').classList.toggle('hidden', !hasFilt)
 
-      // attach card button listeners
       document.querySelectorAll('.delete-btn').forEach(btn => {
         btn.addEventListener('click', () => deleteBook(+btn.dataset.id))
       })
@@ -331,7 +330,6 @@
 
       try {
         if (id) {
-          // PUT expects the full book shape, so carry over the existing status/rating
           const existing = books.find(b => b.id === +id)
           await apiRequest(`/book/${id}`, {
             method: 'PUT',
@@ -342,7 +340,6 @@
             }),
           })
         } else {
-          // POST only needs the create-time fields; backend assigns id + defaults status to to_read
           await apiRequest('/book', {
             method: 'POST',
             body: JSON.stringify({ title, author, genre, pages }),
